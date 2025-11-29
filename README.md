@@ -1,7 +1,29 @@
-This project implements a Movie Recommendation System that combines hybrid filtering (content-based and collaborative filtering) with sentiment analysis to provide personalized and accurate movie suggestions.
+Objective: The aim of the project is to recommend movies to the user based on the similarity scores.
 
-Content-Based Filtering: Identifies movies similar to a selected movie by analyzing movie descriptions using TF-IDF and cosine similarity.
+#### 2) Libraries used:
+          a) Numpy
+          
+          b) Pandas
+          
+          c) Difflib
+          
+          d) TfidVectorizer
+          
+          e) Cosine_similarity
 
-Collaborative Filtering: Predicts user preferences and recommends movies using the SVD algorithm on user ratings.
+#### 3) Work Flow:
+          a) Data Collection
+  
+          b) Data Preprocessing
+  
+          c) Feature extraction
+  
+          d) User Input
+  
+          e) Cosine Similarity
+  
+          f) List of movies
 
-Sentiment Analysis: Evaluates user reviews using VADER to boost recommendations based on positive sentiment.
+#### 4) Output: 30 movies based on higher similarity scores are displayed to the user.
+
+
