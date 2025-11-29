@@ -1,0 +1,105 @@
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import pandas as pd
+from surprise import Dataset, Reader, SVD
+from surprise.model_selection import train_test_split
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+# Step 1: Movie Dataset (Content-Based Filtering)
+movies = pd.DataFrame({
+    'title': ['Pushpa', 'KGF', 'Vikram', 'Kaithi', 'Rangasthalam', 'RRR'],
+    'description': ['Action crime thriller smuggling', 
+                    'Action crime underdog revenge', 
+                    'High-paced action crime thriller',
+                    'Dark intense crime thriller',
+                    'Rural drama hero revenge',
+                    'Epic historical action drama']
+})
+
+# Convert descriptions to numerical features using TF-IDF
+vectorizer = TfidfVectorizer()
+tfidf_matrix = vectorizer.fit_transform(movies['description'])
+
+# Compute cosine similarity between movies
+similarity_matrix = cosine_similarity(tfidf_matrix)
+
+# Function to get content-based recommendations
+def get_similar_movies(movie_title, num_recommendations=3):
+    if movie_title not in movies['title'].values:
+        return "Movie not found in database."
+
+    index = movies[movies['title'] == movie_title].index[0]
+    similar_movies = sorted(
+        list(enumerate(similarity_matrix[index])), key=lambda x: x[1], reverse=True
+    )[1:num_recommendations+1]
+    
+    return [movies.iloc[i[0]]['title'] for i in similar_movies]
+
+# Step 2: User Ratings Dataset (Collaborative Filtering)
+ratings_dict = {
+    "user": [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
+    "item": ["Pushpa", "KGF", "Vikram", "Kaithi", "Rangasthalam", "RRR", "Pushpa", "KGF", "Vikram", "Kaithi"],
+    "rating": [5, 5, 4, 4, 5, 4, 4, 5, 5, 3]
+}
+df = pd.DataFrame(ratings_dict)
+
+# Define reader for Surprise library
+reader = Reader(rating_scale=(1, 5))
+data = Dataset.load_from_df(df[['user', 'item', 'rating']], reader)
+
+# Train SVD model for collaborative filtering
+trainset, testset = train_test_split(data, test_size=0.2)
+algo = SVD()
+algo.fit(trainset)
+
+# Function to predict user rating for a movie
+def predict_rating(user_id, movie_title):
+    return algo.predict(uid=user_id, iid=movie_title).est
+
+# Step 3: Sentiment Analysis on Movie Reviews
+analyzer = SentimentIntensityAnalyzer()
+
+# Sample reviews for sentiment analysis
+reviews = {
+    "Pushpa": ["Pushpa is an amazing action movie!", "I loved the mass appeal of Pushpa!"],
+    "KGF": ["KGF is a thrilling action movie!", "The story and visuals of KGF are epic!"],
+    "Kaithi": ["Kaithi was too dark for my taste.", "Amazing action and direction in Kaithi!"]
+}
+
+# Function to analyze sentiment of reviews
+def get_sentiment_score(movie_title):
+    if movie_title not in reviews:
+        return 0  # Default score if no reviews are available
+
+    scores = [analyzer.polarity_scores(review)['compound'] for review in reviews[movie_title]]
+    return sum(scores) / len(scores)  # Average sentiment score
+
+# Final Function to Recommend Movies using Hybrid Filtering
+def recommend_movies(movie_title, user_id=None):
+    content_recommendations = get_similar_movies(movie_title)
+    
+    collaborative_recommendations = []
+    if user_id:
+        for movie in movies['title']:
+            if movie != movie_title:
+                predicted_rating = predict_rating(user_id, movie)
+                if predicted_rating > 4:  # Recommend if predicted rating is high
+                    collaborative_recommendations.append(movie)
+    
+    # Boost recommendations with high sentiment scores
+    sentiment_scores = {movie: get_sentiment_score(movie) for movie in content_recommendations}
+    sorted_sentiment = sorted(sentiment_scores.items(), key=lambda x: x[1], reverse=True)
+    
+    final_recommendations = [movie for movie, score in sorted_sentiment]
+    
+    return {
+        "Content-Based Recommendations": content_recommendations,
+        "Collaborative Recommendations": collaborative_recommendations,
+        "Final Hybrid Recommendations": final_recommendations
+    }
+
+# Test the Recommendation System
+user_id = 4
+movie_title = "Pushpa"
+recommendations = recommend_movies(movie_title, user_id)
+print(f"Recommended movies for '{movie_title}':\n", recommendations)
